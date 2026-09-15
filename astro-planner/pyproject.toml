@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astro-planner"
+version = "0.1.0"
+description = "天文观测计划生成器: 恒星时推算高度、月光/暮光/山头遮挡筛选、过中天翻转排程"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+
+[project.scripts]
+astro-planner = "astro_planner.cli:main"
+
+[tool.setuptools]
+packages = ["astro_planner"]
+
+[tool.setuptools.package-data]
+astro_planner = []

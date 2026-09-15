@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>天文观测计划生成器</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>🔭 天文观测计划生成器</h1>
+  <div class="sub">恒星时推算 · 月光/暮光/山头遮挡联合筛选 · 过中天翻转排程</div>
+</header>
+
+<main>
+<section class="panel controls">
+  <div class="row">
+    <label>观测点
+      <select id="site"></select>
+    </label>
+    <label>或自定义 纬/经/海拔
+      <span class="inline">
+        <input id="lat" type="number" step="0.0001" placeholder="lat °" style="width:92px">
+        <input id="lon" type="number" step="0.0001" placeholder="lon °" style="width:92px">
+        <input id="elev" type="number" step="1" placeholder="m" style="width:64px">
+      </span>
+    </label>
+    <label>日期 <input id="date" type="date"></label>
+    <label>时区 <input id="tz" type="number" step="0.5" value="8" style="width:60px"></label>
+    <label>山头
+      <select id="horizon">
+        <option value="mountain" selected>山地预设(东/南遮挡)</option>
+        <option value="flat">平坦地平线</option>
+      </select>
+    </label>
+  </div>
+  <div class="row">
+    <label>全局最低高度 <span class="inline"><input id="minAlt" type="number" value="20" style="width:56px">°</span></label>
+    <label>赤道仪时角极限 ±<span class="inline"><input id="maxHA" type="number" value="120" style="width:56px">°</span></label>
+    <label>步长 <span class="inline"><input id="step" type="number" value="60" step="30" style="width:64px">s</span></label>
+    <label>slew+导星 <span class="inline"><input id="slew" type="number" value="3" style="width:48px">min</span></label>
+    <label>中天翻转 <span class="inline"><input id="flip" type="number" value="3" step="0.5" style="width:48px">min</span></label>
+    <button id="generate" class="primary">生成计划</button>
+    <span id="status" class="status"></span>
+  </div>
+</section>
+
+<section id="nightinfo" class="panel hidden"></section>
+
+<section class="charts">
+  <div class="panel">
+    <div class="panel-h">
+      <h2>高度曲线</h2>
+      <div class="legend-hint">粗实线=可观测窗口段 · 虚线=被遮挡/天光/月光否决 · ▲过中天</div>
+    </div>
+    <canvas id="altChart" height="320"></canvas>
+    <div class="timecursor">
+      <input id="timeSlider" type="range" min="0" max="1000" value="500">
+      <span id="timeLabel"></span>
+      <button id="playBtn" type="button">▶ 动画</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-h">
+      <h2>星图(此刻天空)</h2>
+      <div class="legend-hint">外圈=地平, 中心=天顶 · 方向 N-E-S-W · 灰色折线=山头遮挡</div>
+    </div>
+    <canvas id="skyChart" height="460"></canvas>
+    <div id="skyLegend" class="skylegend"></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-h">
+    <h2>拍摄计划清单</h2>
+    <div>
+      <button id="autoOrder" type="button">恢复自动排序</button>
+      <span class="legend-hint">拖动 ⠿ 可手工调序, 松开即重新排程</span>
+    </div>
+  </div>
+  <table id="planTable">
+    <thead><tr>
+      <th style="width:28px"></th><th>时刻(地方)</th><th>目标 / 动作</th>
+      <th>侧</th><th>张数</th><th>单张</th><th>时长</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  <div id="planMeta" class="planmeta"></div>
+  <div id="warnings"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-h"><h2>目标参数 (可编辑后重新生成)</h2></div>
+  <div class="tablewrap">
+  <table id="targetTable">
+    <thead><tr>
+      <th>目标</th><th>RA°</th><th>Dec°</th><th>优先级</th>
+      <th>单张(s)</th><th>张数</th><th>最低高度</th>
+      <th>避月光</th><th>月距°</th><th>状态</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+</section>
+</main>
+
+<footer>
+  坐标/星历全部自行实现 (numpy): Meeus《Astronomical Algorithms》太阳 ch.25、月球 ch.47、
+  GMST ch.12、岁差章动 ch.21-22、Bennett 折射
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
