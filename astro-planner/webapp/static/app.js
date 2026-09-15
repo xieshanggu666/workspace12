@@ -21,11 +21,15 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
+const CUSTOM_SITE = "✎ 自定义坐标";
+
 async function init() {
   const r = await fetch("/api/sites");
   const meta = await r.json();
   SITES = meta.sites; CATALOG = meta.catalog;
-  $("site").innerHTML = SITES.map(s => `<option>${s}</option>`).join("");
+  $("site").innerHTML =
+    SITES.map(s => `<option>${s}</option>`).join("")
+    + `<option value="${CUSTOM_SITE}">${CUSTOM_SITE}</option>`;
   $("date").value = todayStr();
   $("site").value = SITES.includes("兴隆观测站") ? "兴隆观测站" : SITES[0];
 
@@ -35,10 +39,20 @@ async function init() {
     if (!DATA) return;
     generate(true);
   });
+  // 选预设站点 -> 清空自定义坐标, 保证下次生成用预设
   $("site").addEventListener("change", () => {
-    const s = $("site").value;
-    // 站点切换仅在用户没手动改坐标时回填
+    if ($("site").value !== CUSTOM_SITE) {
+      $("lat").value = ""; $("lon").value = ""; $("elev").value = "";
+    } else {
+      $("lat").focus();
+    }
   });
+  // 在坐标框输入 -> 自动切到“自定义坐标”
+  for (const id of ["lat", "lon", "elev"]) {
+    $(id).addEventListener("input", () => {
+      if ($(id).value !== "") $("site").value = CUSTOM_SITE;
+    });
+  }
   $("timeSlider").addEventListener("input", onTimeMove);
   $("playBtn").addEventListener("click", togglePlay);
   await generate(false);
@@ -81,19 +95,34 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":
 
 /* ------------------------------------------------------------ 请求 */
 
+/* 返回 {site, error}; 预设站点用名字字符串, 自定义用坐标对象 */
 function sitePayload() {
-  const lat = parseFloat($("lat").value), lon = parseFloat($("lon").value);
-  if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
-    return {name:"自定义", lat, lon, elev: parseFloat($("elev").value)||0};
+  const isCustom = $("site").value === CUSTOM_SITE;
+  if (!isCustom) {
+    // 防御: 处于预设模式时坐标框理应已清空
+    return { site: $("site").value };
   }
-  return $("site").value;
+  const lat = parseFloat($("lat").value);
+  const lon = parseFloat($("lon").value);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return { error: "自定义观测点需要同时填写纬度和经度" };
+  }
+  if (lat < -90 || lat > 90) return { error: "纬度须在 -90~90° 之间" };
+  if (lon < -180 || lon > 180) return { error: "经度须在 -180~180° 之间" };
+  const elev = parseFloat($("elev").value);
+  return { site: { name: "自定义", lat, lon, elev: Number.isNaN(elev) ? 0 : elev } };
 }
 
 async function generate(resetOrder) {
   const status = $("status");
+  const sp = sitePayload();
+  if (sp.error) {
+    status.textContent = sp.error; status.style.color = "var(--bad)";
+    return;
+  }
   status.textContent = "计算中…"; status.style.color = "var(--dim)";
   const payload = {
-    site: sitePayload(),
+    site: sp.site,
     date: $("date").value,
     utc_offset: parseFloat($("tz").value),
     horizon: $("horizon").value,
@@ -123,17 +152,17 @@ async function generate(resetOrder) {
   }
 }
 
-/* 仅按新顺序在前端重新排程(复用已算出的星历) */
+/* 仅按新顺序重新排程(重新请求后端, 带上 order) */
 async function reorder(order) {
   const status = $("status");
+  const sp = sitePayload();
+  if (sp.error) {
+    status.textContent = sp.error; status.style.color = "var(--bad)";
+    return;
+  }
   status.textContent = "重新排程…";
-  const targets = DATA.targets.map(t => ({
-    ...t.target,
-    // 保留计算时的窗口: 直接把整份 DATA.targets/ sun/moon 传回不现实,
-    // 因此重新请求一次后端(步长可较大时很快), 但带上 order。
-  }));
   const payload = {
-    site: sitePayload(), date: DATA.date, utc_offset: DATA.utc_offset,
+    site: sp.site, date: DATA.date, utc_offset: DATA.utc_offset,
     horizon: $("horizon").value,
     targets: DATA.targets.map(t => t.target),
     settings: DATA.settings, order,
