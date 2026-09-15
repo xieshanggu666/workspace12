@@ -436,12 +436,12 @@ function renderPlan() {
   order.forEach((name,idx)=>{
     const entries=grouped.get(name);
     const t=byName[name]; if(!t) return;
-    const done=DATA.plan.summary.find(s=>s.target===name);
     const color=colorOf(name);
+    // 手柄跨满本块实际行数(每个 entry 一行), 不能多占, 否则会侵入下一目标块首行
     const nrows=Math.max(entries?entries.length:0,1);
     const blockOpen=`<tr class="griprow" draggable="true" data-name="${escapeHtml(name)}"
         style="border-top:2px solid ${color}55">
-      <td rowspan="${nrows+1}" class="draghandle" title="拖动调整拍摄顺序">⠿</td>`;
+      <td rowspan="${nrows}" class="draghandle" title="拖动调整拍摄顺序">⠿</td>`;
     if (!entries){
       html+=blockOpen+`
         <td colspan="5" class="bad">✗ ${escapeHtml(name)} —— 不可安排</td>
@@ -450,7 +450,6 @@ function renderPlan() {
     }
     let first=true;
     for (const e of entries){
-      const cell=(s)=> first?s:"";
       if (first){
         html+=blockOpen;
       } else {
